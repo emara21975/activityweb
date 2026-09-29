@@ -1,0 +1,43 @@
+# ==============================================================================
+# Systemd Service Unit for School Student Activities Management System
+# Path: /etc/systemd/system/activity_web.service
+# ==============================================================================
+
+[Unit]
+Description=School Student Activities Management Web Application (Next.js)
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/activity_web
+
+# Environment variables
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOSTNAME=127.0.0.1
+EnvironmentFile=/var/www/activity_web/.env.production
+
+# Execution command
+ExecStart=/usr/bin/npm start
+
+# Restart policies
+Restart=always
+RestartSec=5s
+
+# Security Hardening & Sandboxing
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+
+# Resource limits
+LimitNOFILE=65535
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=activity_web
+
+[Install]
+WantedBy=multi-user.target

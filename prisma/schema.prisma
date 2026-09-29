@@ -1,0 +1,357 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model SchoolSettings {
+  id                      String        @id @default(uuid())
+  school_name_ar          String
+  school_name_en          String?
+  school_code             String?
+  supervisor_name         String?
+  school_logo_key         String?
+  ministry_logo_key       String?
+  current_academic_year_id String?
+  current_academic_year   AcademicYear? @relation(fields: [current_academic_year_id], references: [id], onDelete: SetNull)
+  created_at              DateTime      @default(now())
+  updated_at              DateTime      @updatedAt
+
+  @@map("school_settings")
+}
+
+model AcademicYear {
+  id                 String              @id @default(uuid())
+  name               String              @unique
+  start_date         DateTime            @db.Date
+  end_date           DateTime            @db.Date
+  is_current         Boolean             @default(false)
+  is_archived        Boolean             @default(false)
+  term1_start_date   DateTime?           @db.Date
+  term1_end_date     DateTime?           @db.Date
+  term2_start_date   DateTime?           @db.Date
+  term2_end_date     DateTime?           @db.Date
+  created_at         DateTime            @default(now())
+  updated_at         DateTime            @updatedAt
+
+  school_settings    SchoolSettings[]
+  class_groups       ClassGroup[]
+  enrollments        StudentEnrollment[]
+  activities         Activity[]
+
+  @@map("academic_years")
+}
+
+model GradeLevel {
+  id           String       @id @default(uuid())
+  name_ar      String
+  name_en      String?
+  sort_order   Int          @default(0)
+  is_active    Boolean      @default(true)
+
+  class_groups ClassGroup[]
+
+  @@map("grade_levels")
+}
+
+model Section {
+  id           String       @id @default(uuid())
+  name         String       @unique
+  sort_order   Int          @default(0)
+  is_active    Boolean      @default(true)
+
+  class_groups ClassGroup[]
+
+  @@map("sections")
+}
+
+model ClassGroup {
+  id               String              @id @default(uuid())
+  academic_year_id String
+  grade_level_id   String
+  section_id       String
+  display_name     String
+  is_active        Boolean             @default(true)
+
+  academic_year    AcademicYear        @relation(fields: [academic_year_id], references: [id], onDelete: Restrict)
+  grade_level      GradeLevel          @relation(fields: [grade_level_id], references: [id], onDelete: Restrict)
+  section          Section             @relation(fields: [section_id], references: [id], onDelete: Restrict)
+  enrollments      StudentEnrollment[]
+
+  @@unique([academic_year_id, grade_level_id, section_id])
+  @@map("class_groups")
+}
+
+model Student {
+  id                 String              @id @default(uuid())
+  academic_number    String?             @unique
+  personal_number    String?
+  full_name_ar       String
+  full_name_en       String?
+  nationality        String?
+  nationality_group  String?             // "QATARI", "NON_QATARI", or null
+  is_active          Boolean             @default(true)
+  archived_at        DateTime?
+  notes              String?
+  created_at         DateTime            @default(now())
+  updated_at         DateTime            @updatedAt
+
+  enrollments        StudentEnrollment[]
+  participations     Participation[]
+
+  @@map("students")
+}
+
+model StudentEnrollment {
+  id               String          @id @default(uuid())
+  student_id       String
+  class_group_id   String
+  academic_year_id String
+  status           String          @default("ACTIVE") // ACTIVE, TRANSFERRED, COMPLETED, ARCHIVED
+  enrolled_from    DateTime        @default(now()) @db.Date
+  enrolled_to      DateTime?       @db.Date
+  created_at       DateTime        @default(now())
+  updated_at       DateTime        @updatedAt
+
+  student          Student         @relation(fields: [student_id], references: [id], onDelete: Restrict)
+  class_group      ClassGroup      @relation(fields: [class_group_id], references: [id], onDelete: Restrict)
+  academic_year    AcademicYear    @relation(fields: [academic_year_id], references: [id], onDelete: Restrict)
+  participations   Participation[]
+
+  @@index([student_id, academic_year_id])
+  @@index([class_group_id, enrolled_from])
+  @@map("student_enrollments")
+}
+
+model ActivityCategory {
+  id          String     @id @default(uuid())
+  code        String     @unique
+  name_ar     String
+  name_en     String?
+  description String?
+  sort_order  Int        @default(0)
+  is_active   Boolean    @default(true)
+
+  activities  Activity[]
+
+  @@map("activity_categories")
+}
+
+model Activity {
+  id               String               @id @default(uuid())
+  academic_year_id String
+  category_id      String
+  name             String
+  activity_date    DateTime             @db.Date
+  status           String               @default("PLANNED") // PLANNED, COMPLETED, CANCELLED
+  notes            String?
+  archived_at      DateTime?
+  created_by_id    String?
+  updated_by_id    String?
+  created_at       DateTime             @default(now())
+  updated_at       DateTime             @updatedAt
+
+  academic_year    AcademicYear         @relation(fields: [academic_year_id], references: [id], onDelete: Restrict)
+  category         ActivityCategory     @relation(fields: [category_id], references: [id], onDelete: Restrict)
+  creator          User?                @relation("CreatedActivities", fields: [created_by_id], references: [id], onDelete: SetNull)
+  updater          User?                @relation("UpdatedActivities", fields: [updated_by_id], references: [id], onDelete: SetNull)
+  participations   Participation[]
+  attachments      ActivityAttachment[]
+
+  @@index([academic_year_id, activity_date])
+  @@index([category_id, activity_date])
+  @@map("activities")
+}
+
+model Participation {
+  id                    String            @id @default(uuid())
+  activity_id           String
+  student_id            String
+  student_enrollment_id String
+  notes                 String?
+  created_by_id         String?
+  created_at            DateTime          @default(now())
+
+  activity              Activity          @relation(fields: [activity_id], references: [id], onDelete: Restrict)
+  student               Student           @relation(fields: [student_id], references: [id], onDelete: Restrict)
+  enrollment            StudentEnrollment @relation(fields: [student_enrollment_id], references: [id], onDelete: Restrict)
+  creator               User?             @relation("CreatedParticipations", fields: [created_by_id], references: [id], onDelete: SetNull)
+
+  @@unique([activity_id, student_id])
+  @@index([student_id])
+  @@index([student_enrollment_id])
+  @@map("participations")
+}
+
+model ActivityAttachment {
+  id             String    @id @default(uuid())
+  activity_id    String
+  original_name  String
+  storage_key    String    @unique
+  mime_type      String
+  byte_size      BigInt
+  checksum       String?
+  uploaded_by_id String?
+  created_at     DateTime  @default(now())
+  archived_at    DateTime?
+
+  activity       Activity  @relation(fields: [activity_id], references: [id], onDelete: Cascade)
+  uploader       User?     @relation(fields: [uploaded_by_id], references: [id], onDelete: SetNull)
+
+  @@map("activity_attachments")
+}
+
+model ImportBatch {
+  id             String        @id @default(uuid())
+  kind           String        // STUDENTS, ACTIVITIES, PARTICIPATIONS
+  filename       String
+  uploaded_by_id String?
+  status         String        @default("UPLOADED") // UPLOADED, PREVIEWED, COMMITTED, FAILED
+  counts_json    String?
+  created_at     DateTime      @default(now())
+  committed_at   DateTime?
+
+  uploader       User?         @relation(fields: [uploaded_by_id], references: [id], onDelete: SetNull)
+  errors         ImportError[]
+
+  @@map("import_batches")
+}
+
+model ImportError {
+  id                  String      @id @default(uuid())
+  batch_id            String
+  row_number          Int
+  field               String?
+  code                String
+  message             String
+  raw_value_redacted  String?
+
+  batch               ImportBatch @relation(fields: [batch_id], references: [id], onDelete: Cascade)
+
+  @@map("import_errors")
+}
+
+model BackupMetadata {
+  id                      String    @id @default(uuid())
+  storage_key             String    @unique
+  created_by_id           String?
+  created_at              DateTime  @default(now())
+  status                  String
+  checksum                String?
+  db_version              String?
+  attachment_manifest_key String?
+
+  creator                 User?     @relation(fields: [created_by_id], references: [id], onDelete: SetNull)
+
+  @@map("backup_metadata")
+}
+
+model AuditLog {
+  id                   String    @id @default(uuid())
+  actor_user_id        String?
+  action               String
+  entity_type          String
+  entity_id            String
+  before_json_redacted String?
+  after_json_redacted  String?
+  request_id           String?
+  occurred_at          DateTime  @default(now())
+
+  actor                User?     @relation(fields: [actor_user_id], references: [id], onDelete: SetNull)
+
+  @@index([actor_user_id, occurred_at])
+  @@index([entity_type, entity_id])
+  @@map("audit_logs")
+}
+
+model User {
+  id                   String               @id @default(uuid())
+  username             String               @unique
+  email                String?              @unique
+  display_name         String
+  password_hash        String
+  is_active            Boolean              @default(true)
+  last_login_at        DateTime?
+  password_changed_at  DateTime?
+  created_at           DateTime             @default(now())
+  updated_at           DateTime             @updatedAt
+
+  user_roles           UserRole[]
+  created_activities   Activity[]           @relation("CreatedActivities")
+  updated_activities   Activity[]           @relation("UpdatedActivities")
+  created_participations Participation[]    @relation("CreatedParticipations")
+  attachments          ActivityAttachment[]
+  import_batches       ImportBatch[]
+  backups              BackupMetadata[]
+  audit_logs           AuditLog[]
+
+  @@map("users")
+}
+
+model Role {
+  id          String           @id @default(uuid())
+  code        String           @unique
+  name_ar     String
+  description String?
+  is_system   Boolean          @default(false)
+  created_at  DateTime         @default(now())
+
+  user_roles  UserRole[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id @default(uuid())
+  code        String           @unique
+  description String?
+  module      String
+
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+model UserRole {
+  user_id String
+  role_id String
+
+  user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  role    Role   @relation(fields: [role_id], references: [id], onDelete: Cascade)
+
+  @@id([user_id, role_id])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  role_id       String
+  permission_id String
+
+  role          Role       @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  permission    Permission @relation(fields: [permission_id], references: [id], onDelete: Cascade)
+
+  @@id([role_id, permission_id])
+  @@map("role_permissions")
+}
+
+model InspirationalQuote {
+  id             String    @id @default(uuid())
+  quote_text     String
+  author_title   String?
+  sub_title      String?
+  image_url      String    @default("/back.jpg")
+  display_order  Int       @default(0)
+  is_active      Boolean   @default(true)
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  @@map("inspirational_quotes")
+}
+

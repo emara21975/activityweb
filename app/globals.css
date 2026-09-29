@@ -1,0 +1,136 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+:root {
+  --font-arabic: 'Cairo', system-ui, -apple-system, sans-serif;
+  --primary: #8A1538;
+  --primary-hover: #72112E;
+  --primary-light: #FBF0F2;
+  --primary-border: #E8B4C0;
+  
+  --gold: #C59B27;
+  --gold-hover: #A8831E;
+  --gold-light: #FDF9EE;
+  
+  --background: #F8FAFC;
+  --card-bg: #FFFFFF;
+  --foreground: #0F172A;
+  --muted: #64748B;
+  --border: #E2E8F0;
+}
+
+body {
+  font-family: var(--font-arabic);
+  background-color: var(--background);
+  color: var(--foreground);
+  min-height: 100vh;
+  direction: rtl;
+  text-align: right;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* Glassmorphism utilities */
+.glass-header {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.table-row-hover:hover {
+  background-color: #F8FAFC;
+}
+
+/* ========================================================
+   UNIVERSAL HTML PRINT & PDF STYLES
+   Ensures 100% Crisp Arabic Typography & Perfect A4 Export
+   ======================================================== */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm 15mm 12mm;
+  }
+
+  /* Force exact background colors and borders in PDF/Print */
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  html, body {
+    background: #FFFFFF !important;
+    color: #0F172A !important;
+    font-size: 11pt !important;
+    line-height: 1.4 !important;
+    width: 100% !important;
+    min-height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Hide Navigation, Sidebars, Modals, Action Buttons */
+  aside,
+  header,
+  nav,
+  button,
+  .print-hidden,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Remove link URLs on print */
+  a[href]::after {
+    content: none !important;
+  }
+
+  /* Main content container expansion */
+  main {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Avoid unwanted page breaks inside tables, cards, and signatures */
+  tr,
+  td,
+  th,
+  .print-avoid-break,
+  .break-inside-avoid {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Repeat table headers on multiple pages */
+  thead {
+    display: table-header-group;
+  }
+
+  tfoot {
+    display: table-footer-group;
+  }
+
+  /* Official print borders */
+  .print-bordered {
+    border: 1px solid #CBD5E1 !important;
+  }
+}
