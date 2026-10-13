@@ -1,4 +1,5 @@
 import { prisma } from "../db/prisma";
+import { getSchoolSettings } from "./school-settings-service";
 import { Prisma } from "@prisma/client";
 
 export interface StatisticsFilterOptions {
@@ -319,8 +320,8 @@ export async function getDetailedDashboardData(
   const metrics = await getDashboardMetrics(options);
 
   // 2. Fetch School Name
-  const settings = await prisma.schoolSettings.findFirst();
-  const schoolName = settings?.school_name_ar || "مدرسة عبد الله بن علي المسند";
+  const settings = await getSchoolSettings();
+  const schoolName = settings?.school_name_ar || "مدرسة عبد الله بن على المسند الثانوية للبنين";
 
   // 3. Population Nationality Breakdown
   const enrollmentWhere: Prisma.StudentEnrollmentWhereInput = {

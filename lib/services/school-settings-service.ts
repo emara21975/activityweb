@@ -3,6 +3,9 @@ import { logAudit } from "../audit/audit-service";
 
 export async function getSchoolSettings() {
   let settings = await prisma.schoolSettings.findFirst({
+    orderBy: {
+      updated_at: "desc",
+    },
     include: {
       current_academic_year: true,
     },
@@ -11,8 +14,8 @@ export async function getSchoolSettings() {
   if (!settings) {
     settings = await prisma.schoolSettings.create({
       data: {
-        school_name_ar: "مدرسة قطر للتعليم الثانوي",
-        school_name_en: "Qatar Secondary School",
+        school_name_ar: "مدرسة عبد الله بن على المسند الثانوية للبنين",
+        school_name_en: "Abdullah Bin Ali Almesnad Secondary School For Boys",
         supervisor_name: "مشرف الأنشطة المدرسية",
       },
       include: {

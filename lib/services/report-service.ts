@@ -175,7 +175,7 @@ export async function getOfficialReportData(options: StatisticsFilterOptions = {
   });
 
   return {
-    schoolName: currentSettings?.school_name_ar || "مدرسة قطر للتعليم الثانوي",
+    schoolName: currentSettings?.school_name_ar || "مدرسة عبد الله بن على المسند الثانوية للبنين",
     academicYearName: currentYear?.name || "العام الحالي",
     generatedAt: new Date().toLocaleString("ar-QA"),
     periodLabel,

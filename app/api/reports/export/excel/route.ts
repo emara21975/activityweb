@@ -42,7 +42,7 @@ export async function GET(request: Request) {
     getSchoolSettings(),
   ]);
 
-  const schoolName = schoolSettings?.school_name_ar || "مدرسة قطر للتعليم الثانوي";
+  const schoolName = schoolSettings?.school_name_ar || "مدرسة عبد الله بن على المسند الثانوية للبنين";
   const academicYearName = currentYear?.name || "العام الدراسي الحالي";
 
   if (type === "non-participants") {
