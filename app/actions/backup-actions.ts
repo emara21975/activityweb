@@ -7,6 +7,7 @@ import {
   createSystemBackup,
   restoreSystemBackup,
   deleteSystemBackup,
+  importBackupFile,
 } from "@/lib/services/backup-service";
 
 export async function createBackupAction() {
@@ -49,6 +50,28 @@ export async function deleteBackupAction(backupId: string) {
     return { success: true };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "فشل حذف النسخة الاحتياطية";
+    return { error: msg };
+  }
+}
+
+export async function uploadBackupAction(formData: FormData) {
+  try {
+    const user = await requirePermission(PERMISSIONS.BACKUP_CREATE);
+    const file = formData.get("backupFile") as File | null;
+    if (!file || file.size === 0) {
+      return { error: "يرجى تحديد ملف نسخة احتياطية صالح بتنسيق JSON." };
+    }
+
+    if (!file.name.endsWith(".json")) {
+      return { error: "صيغة الملف غير مقبولة. يجب أن يكون ملف JSON." };
+    }
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const result = await importBackupFile(buffer, file.name, user.id);
+    revalidatePath("/backups");
+    return { success: true, storageKey: result.storageKey, backupId: result.record.id };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "فشل رفع واستيراد النسخة الاحتياطية";
     return { error: msg };
   }
 }

@@ -37,9 +37,9 @@ export async function getStudents(options: StudentFilterOptions = {}) {
   if (options.search && options.search.trim()) {
     const s = options.search.trim();
     where.OR = [
-      { full_name_ar: { contains: s, mode: "insensitive" } },
-      { full_name_en: { contains: s, mode: "insensitive" } },
-      { academic_number: { contains: s, mode: "insensitive" } },
+      { full_name_ar: { contains: s } },
+      { full_name_en: { contains: s } },
+      { academic_number: { contains: s } },
     ];
   }
 
@@ -134,8 +134,8 @@ export async function getStudentMetrics(options: Omit<StudentFilterOptions, "pag
   if (options.search && options.search.trim()) {
     const s = options.search.trim();
     where.OR = [
-      { full_name_ar: { contains: s, mode: "insensitive" } },
-      { academic_number: { contains: s, mode: "insensitive" } },
+      { full_name_ar: { contains: s } },
+      { academic_number: { contains: s } },
     ];
   }
 

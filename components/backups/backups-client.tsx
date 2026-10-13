@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState, useTransition, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   createBackupAction,
   restoreBackupAction,
   deleteBackupAction,
+  uploadBackupAction,
 } from "@/app/actions/backup-actions";
 import { BackupSummary } from "@/lib/services/backup-service";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -22,9 +24,9 @@ import {
   Loader2,
   HardDrive,
   Clock,
-  KeyRound,
-  FileCheck,
+  Upload,
   X,
+  Info,
 } from "lucide-react";
 
 interface BackupsClientProps {
@@ -34,10 +36,19 @@ interface BackupsClientProps {
 }
 
 export function BackupsClient({ initialBackups, canCreate, canRestore }: BackupsClientProps) {
-  const [backups] = useState<BackupSummary[]>(initialBackups);
+  const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [backups, setBackups] = useState<BackupSummary[]>(initialBackups);
   const [isPending, startTransition] = useTransition();
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Sync state with server props
+  useEffect(() => {
+    setBackups(initialBackups);
+  }, [initialBackups]);
 
   // Restore Modal State
   const [selectedBackupForRestore, setSelectedBackupForRestore] = useState<BackupSummary | null>(null);
@@ -73,8 +84,38 @@ export function BackupsClient({ initialBackups, canCreate, canRestore }: Backups
         setError(res.error);
       } else {
         setSuccess(`تم إنشاء النسخة الاحتياطية بنجاح: ${res.storageKey}`);
+        router.refresh();
       }
     });
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setError(null);
+    setSuccess(null);
+    setIsUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("backupFile", file);
+
+      const res = await uploadBackupAction(formData);
+      if (res.error) {
+        setError(res.error);
+      } else {
+        setSuccess(`تم رفع النسخة الاحتياطية بنجاح: ${res.storageKey}. يمكنك الآن استعادتها من الجدول.`);
+        router.refresh();
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "فشل رفع الملف");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
   };
 
   const handleRestoreSubmit = async (e: React.FormEvent) => {
@@ -100,6 +141,7 @@ export function BackupsClient({ initialBackups, canCreate, canRestore }: Backups
         );
         setSelectedBackupForRestore(null);
         setRestoreConfirmText("");
+        router.refresh();
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "فشلت عملية الاستعادة");
@@ -122,13 +164,23 @@ export function BackupsClient({ initialBackups, canCreate, canRestore }: Backups
         setError(res.error);
       } else {
         setSuccess(`تم حذف النسخة الاحتياطية بنجاح.`);
+        router.refresh();
       }
     });
   };
 
   return (
     <div className="space-y-6">
-      {/* Header & Action Button */}
+      {/* Hidden file input for backup upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json"
+        className="hidden"
+        onChange={handleFileUpload}
+      />
+
+      {/* Header & Action Buttons */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2">
@@ -136,31 +188,68 @@ export function BackupsClient({ initialBackups, canCreate, canRestore }: Backups
             <span>النسخ الاحتياطي واستعادة النظام</span>
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            إدارة النسخ الاحتياطية الشاملة لقاعدة البيانات مع التحقق بالبصمة الرقمية SHA256 ونقاط الاستعادة التلقائية.
+            إدارة النسخ الاحتياطية الشاملة واستعادتها مع التحقق بالبصمة الرقمية SHA256 وحفظ نقاط أمان تلقائية.
           </p>
         </div>
 
-        {canCreate && (
-          <Button
-            type="button"
-            variant="primary"
-            onClick={handleCreateBackup}
-            disabled={isPending}
-            className="shadow-sm font-bold gap-2 text-xs"
-          >
-            {isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>جاري إنشاء النسخة...</span>
-              </>
-            ) : (
-              <>
-                <HardDrive className="w-4 h-4 text-[#C59B27]" />
-                <span>إنشاء نسخة احتياطية فورية</span>
-              </>
-            )}
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {canCreate && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading || isPending}
+              className="shadow-xs font-bold gap-2 text-xs border-slate-300 hover:bg-slate-50"
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-[#8A1538]" />
+                  <span>جاري رفع الملف...</span>
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4 text-[#8A1538]" />
+                  <span>رفع نسخة من جهازك</span>
+                </>
+              )}
+            </Button>
+          )}
+
+          {canCreate && (
+            <Button
+              type="button"
+              variant="primary"
+              onClick={handleCreateBackup}
+              disabled={isPending || isUploading}
+              className="shadow-sm font-bold gap-2 text-xs bg-[#8A1538] hover:bg-[#70102d] text-white"
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>جاري إنشاء النسخة...</span>
+                </>
+              ) : (
+                <>
+                  <HardDrive className="w-4 h-4 text-[#C59B27]" />
+                  <span>إنشاء نسخة احتياطية فورية</span>
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Guide notice explaining how restore works */}
+      <div className="p-3 bg-blue-50/80 border border-blue-200/80 rounded-xl text-blue-900 text-xs flex items-start gap-2.5 shadow-2xs">
+        <Info className="w-4 h-4 shrink-0 text-blue-600 mt-0.5" />
+        <div className="space-y-0.5">
+          <p className="font-bold">كيف تعمل خاصية استعادة النسخة الاحتياطية؟</p>
+          <p className="text-blue-800 leading-relaxed">
+            - لاستعادة نسخة محفوظة: اضغط على أيقونة الاستعادة البرتقالية (<span className="font-bold">↺</span>) الموجودة في عمود الإجراءات بالجدول بجانب أي نسخة.
+            <br />
+            - إذا كان لديك ملف نسخة احتياطية (.json) محفوظ على جهازك، اضغط على زر <span className="font-bold">"رفع نسخة من جهازك"</span> لرفعه وإدراجه في القائمة فوراً لتتمكن من استعادته.
+          </p>
+        </div>
       </div>
 
       {/* Notifications */}
@@ -220,7 +309,7 @@ export function BackupsClient({ initialBackups, canCreate, canRestore }: Backups
         <CardHeader className="p-4 bg-slate-50 border-b border-slate-200 flex flex-row items-center justify-between">
           <div>
             <CardTitle className="text-base font-bold text-slate-900">
-              سجل النسخ الاحتياطية المحفوظة
+              سجل النسخ الاحتياطية المتوفرة
             </CardTitle>
             <CardDescription className="text-xs text-slate-500">
               قائمة النسخ الاحتياطية المتوفرة على الخادم مع إمكانية التحميل أو الاستعادة.
@@ -232,15 +321,39 @@ export function BackupsClient({ initialBackups, canCreate, canRestore }: Backups
         </CardHeader>
 
         {backups.length === 0 ? (
-          <div className="text-center py-16 text-slate-400 space-y-3">
-            <Database className="w-12 h-12 mx-auto text-slate-300" />
-            <p className="text-sm font-semibold text-slate-600">
-              لم يتم إنشاء أي نسخة احتياطية حتى الآن.
-            </p>
+          <div className="text-center py-16 text-slate-400 space-y-4 px-4">
+            <Database className="w-14 h-14 mx-auto text-slate-300" />
+            <div className="space-y-1">
+              <p className="text-sm font-bold text-slate-700">
+                لم يتم إنشاء أو رفع أي نسخة احتياطية حتى الآن.
+              </p>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                يمكنك إنشاء نسخة جديدة لحفظ البيانات الحالية، أو رفع ملف نسخة سابقة (.json) من جهازك لاستعادتها فوراً.
+              </p>
+            </div>
             {canCreate && (
-              <Button size="sm" variant="gold" onClick={handleCreateBackup} disabled={isPending}>
-                إنشاء أول نسخة احتياطية الآن
-              </Button>
+              <div className="flex items-center justify-center gap-3 pt-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="gap-2 text-xs font-bold border-slate-300"
+                >
+                  <Upload className="w-4 h-4 text-[#8A1538]" />
+                  <span>رفع نسخة من جهازك</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="gold"
+                  onClick={handleCreateBackup}
+                  disabled={isPending}
+                  className="gap-2 text-xs font-bold"
+                >
+                  <HardDrive className="w-4 h-4" />
+                  <span>إنشاء نسخة احتياطية فورية</span>
+                </Button>
+              </div>
             )}
           </div>
         ) : (
@@ -313,7 +426,7 @@ export function BackupsClient({ initialBackups, canCreate, canRestore }: Backups
                             <Download className="w-4 h-4" />
                           </a>
 
-                          {/* Restore */}
+                          {/* Restore Button */}
                           {canRestore && (
                             <button
                               type="button"
@@ -321,10 +434,11 @@ export function BackupsClient({ initialBackups, canCreate, canRestore }: Backups
                                 setSelectedBackupForRestore(b);
                                 setRestoreConfirmText("");
                               }}
-                              className="p-1.5 text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded transition-colors"
-                              title="استعادة هذه النسخة"
+                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded border border-amber-200 transition-colors shadow-2xs"
+                              title="استعادة قاعدة البيانات من هذه النسخة"
                             >
-                              <RotateCcw className="w-4 h-4" />
+                              <RotateCcw className="w-3.5 h-3.5" />
+                              <span>استعادة</span>
                             </button>
                           )}
 

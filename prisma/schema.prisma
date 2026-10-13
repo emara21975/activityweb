@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -98,7 +98,7 @@ model Student {
   nationality_group  String?             // "QATARI", "NON_QATARI", or null
   is_active          Boolean             @default(true)
   archived_at        DateTime?
-  notes              String?
+  notes              String?             @db.LongText
   created_at         DateTime            @default(now())
   updated_at         DateTime            @updatedAt
 
@@ -114,7 +114,7 @@ model StudentEnrollment {
   class_group_id   String
   academic_year_id String
   status           String          @default("ACTIVE") // ACTIVE, TRANSFERRED, COMPLETED, ARCHIVED
-  enrolled_from    DateTime        @default(now()) @db.Date
+  enrolled_from    DateTime        @default(now())
   enrolled_to      DateTime?       @db.Date
   created_at       DateTime        @default(now())
   updated_at       DateTime        @updatedAt
@@ -134,7 +134,7 @@ model ActivityCategory {
   code        String     @unique
   name_ar     String
   name_en     String?
-  description String?
+  description String?    @db.LongText
   sort_order  Int        @default(0)
   is_active   Boolean    @default(true)
 
@@ -150,7 +150,7 @@ model Activity {
   name             String
   activity_date    DateTime             @db.Date
   status           String               @default("PLANNED") // PLANNED, COMPLETED, CANCELLED
-  notes            String?
+  notes            String?              @db.LongText
   archived_at      DateTime?
   created_by_id    String?
   updated_by_id    String?
@@ -174,7 +174,7 @@ model Participation {
   activity_id           String
   student_id            String
   student_enrollment_id String
-  notes                 String?
+  notes                 String?           @db.LongText
   created_by_id         String?
   created_at            DateTime          @default(now())
 
@@ -213,7 +213,7 @@ model ImportBatch {
   filename       String
   uploaded_by_id String?
   status         String        @default("UPLOADED") // UPLOADED, PREVIEWED, COMMITTED, FAILED
-  counts_json    String?
+  counts_json    String?       @db.LongText
   created_at     DateTime      @default(now())
   committed_at   DateTime?
 
@@ -229,8 +229,8 @@ model ImportError {
   row_number          Int
   field               String?
   code                String
-  message             String
-  raw_value_redacted  String?
+  message             String      @db.LongText
+  raw_value_redacted  String?     @db.LongText
 
   batch               ImportBatch @relation(fields: [batch_id], references: [id], onDelete: Cascade)
 
@@ -258,8 +258,8 @@ model AuditLog {
   action               String
   entity_type          String
   entity_id            String
-  before_json_redacted String?
-  after_json_redacted  String?
+  before_json_redacted String?   @db.LongText
+  after_json_redacted  String?   @db.LongText
   request_id           String?
   occurred_at          DateTime  @default(now())
 
@@ -298,7 +298,7 @@ model Role {
   id          String           @id @default(uuid())
   code        String           @unique
   name_ar     String
-  description String?
+  description String?          @db.LongText
   is_system   Boolean          @default(false)
   created_at  DateTime         @default(now())
 
@@ -311,7 +311,7 @@ model Role {
 model Permission {
   id          String           @id @default(uuid())
   code        String           @unique
-  description String?
+  description String?          @db.LongText
   module      String
 
   roles       RolePermission[]
@@ -343,7 +343,7 @@ model RolePermission {
 
 model InspirationalQuote {
   id             String    @id @default(uuid())
-  quote_text     String
+  quote_text     String    @db.LongText
   author_title   String?
   sub_title      String?
   image_url      String    @default("/back.jpg")
@@ -354,4 +354,3 @@ model InspirationalQuote {
 
   @@map("inspirational_quotes")
 }
-

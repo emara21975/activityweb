@@ -29,7 +29,7 @@ export async function getActivities(options: ActivityFilterOptions = {}) {
   }
 
   if (options.search && options.search.trim()) {
-    where.name = { contains: options.search.trim(), mode: "insensitive" };
+    where.name = { contains: options.search.trim() };
   }
 
   if (options.from || options.to) {

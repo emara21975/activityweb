@@ -72,13 +72,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     });
 
     const safeName = activity.name.replace(/[\\/:*?"<>|]/g, "_");
-    const filename = `تقرير نشاط - ${encodeURIComponent(safeName)}.docx`;
+    const fullFilename = `تقرير نشاط - ${safeName}.docx`;
 
     return new NextResponse(new Uint8Array(docxBuffer), {
       status: 200,
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+        "Content-Disposition": `attachment; filename="activity_${activity.id}.docx"; filename*=UTF-8''${encodeURIComponent(fullFilename)}`,
       },
     });
   } catch (error: any) {

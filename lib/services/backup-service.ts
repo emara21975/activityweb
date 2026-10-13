@@ -179,6 +179,64 @@ export async function createSystemBackup(actorUserId?: string, isPreRestore = fa
 }
 
 /**
+ * Imports an external backup JSON file to the server storage
+ */
+export async function importBackupFile(fileBuffer: Buffer, originalFileName: string, actorUserId?: string) {
+  await fs.mkdir(BACKUPS_DIR, { recursive: true });
+
+  const raw = fileBuffer.toString("utf-8");
+  let parsed: any;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error("ملف النسخة الاحتياطية غير صالح (تنسيق JSON معطوب).");
+  }
+
+  if (!parsed || !parsed.tables || typeof parsed.tables !== "object") {
+    throw new Error("ملف النسخة الاحتياطية غير متوافق: لا يحتوي على بنية البيانات المطلوبة.");
+  }
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const cleanOriginalName = path.basename(originalFileName).replace(/[^a-zA-Z0-9._-]/g, "_");
+  const storageKey = cleanOriginalName.endsWith(".json")
+    ? `imported-${timestamp}-${cleanOriginalName}`
+    : `imported-${timestamp}-${cleanOriginalName}.json`;
+
+  const filePath = path.join(BACKUPS_DIR, storageKey);
+  const checksum = crypto.createHash("sha256").update(raw).digest("hex");
+
+  await fs.writeFile(filePath, raw, "utf-8");
+
+  const record = await prisma.backupMetadata.create({
+    data: {
+      storage_key: storageKey,
+      status: "SUCCESS",
+      checksum,
+      db_version: parsed.version || CURRENT_DB_VERSION,
+      attachment_manifest_key: `${storageKey}-manifest`,
+      created_by_id: actorUserId || null,
+    },
+  });
+
+  await logAudit({
+    actorUserId,
+    action: "IMPORT_BACKUP",
+    entityType: "backup_metadata",
+    entityId: record.id,
+    afterData: {
+      storageKey,
+      counts: parsed.counts || {},
+      checksum,
+    },
+  });
+
+  return {
+    record,
+    storageKey,
+  };
+}
+
+/**
  * Lists all backups with disk status
  */
 export async function listSystemBackups(): Promise<BackupSummary[]> {
