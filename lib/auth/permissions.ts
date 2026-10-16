@@ -16,6 +16,7 @@ export const PERMISSIONS = {
 
   // Activities
   ACTIVITY_VIEW: "activity.view",
+  ACTIVITY_VIEW_ALL: "activity.view_all",
   ACTIVITY_CREATE: "activity.create",
   ACTIVITY_UPDATE: "activity.update",
   ACTIVITY_ARCHIVE: "activity.archive",
@@ -89,6 +90,7 @@ export const ALL_PERMISSIONS: PermissionDefinition[] = [
   { code: PERMISSIONS.ENROLLMENT_MANAGE, module: "enrollment", description: "تسجيل ونقل الطلاب بين الصفوف والشعب" },
 
   { code: PERMISSIONS.ACTIVITY_VIEW, module: "activity", description: "عرض سجل الأنشطة المدرسية" },
+  { code: PERMISSIONS.ACTIVITY_VIEW_ALL, module: "activity", description: "عرض وإدارة جميع أنشطة المدرسة (وليس أنشطته فقط)" },
   { code: PERMISSIONS.ACTIVITY_CREATE, module: "activity", description: "إنشاء نشاط مدرسي جديد" },
   { code: PERMISSIONS.ACTIVITY_UPDATE, module: "activity", description: "تعديل بيانات النشاط" },
   { code: PERMISSIONS.ACTIVITY_ARCHIVE, module: "activity", description: "أرشفة النشاط" },

@@ -12,6 +12,8 @@ export interface StatisticsFilterOptions {
   period?: string; // "today" | "week" | "month" | "specific_month" | "term1" | "term2" | "year" | "custom" | "single_date"
   date?: string; // for single date
   month?: string; // "1" to "12" or "YYYY-MM"
+  /** Ownership scope (activityScopeWhere): restricts activities and their participations */
+  activityScope?: Prisma.ActivityWhereInput;
 }
 
 export function resolveDateRange(
@@ -172,6 +174,7 @@ export async function getDashboardMetrics(options: StatisticsFilterOptions = {})
   // 3. Count activities in scope
   const activityWhere: Prisma.ActivityWhereInput = {
     archived_at: null,
+    ...(options.activityScope ? { AND: [options.activityScope] } : {}),
     ...(academicYearId ? { academic_year_id: academicYearId } : {}),
     ...(options.categoryId ? { category_id: options.categoryId } : {}),
   };
@@ -348,6 +351,7 @@ export async function getDetailedDashboardData(
   // 4. Completed vs Draft Activities
   const activityWhere: Prisma.ActivityWhereInput = {
     archived_at: null,
+    ...(options.activityScope ? { AND: [options.activityScope] } : {}),
     ...(academicYearId ? { academic_year_id: academicYearId } : {}),
     ...(options.categoryId ? { category_id: options.categoryId } : {}),
   };

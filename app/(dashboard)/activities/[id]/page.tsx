@@ -13,6 +13,9 @@ import { removeParticipationAction } from "@/app/actions/participation-actions";
 import { getSession } from "@/lib/auth/session";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { getAllowedReportTemplates } from "@/lib/auth/report-template";
+import { isActivityInScope, canViewAllActivities } from "@/lib/auth/activity-scope";
+import { ActivityOwnerSelect } from "@/components/activities/ActivityOwnerSelect";
+import { prisma } from "@/lib/db/prisma";
 import { ActivityAttachments } from "@/components/activities/activity-attachments";
 import { OfficialActivityReport } from "@/components/activities/OfficialActivityReport";
 import { ActivityVideoDocumentation } from "@/components/activities/ActivityVideoDocumentation";
@@ -37,22 +40,31 @@ interface ActivityDetailsPageProps {
 
 export default async function ActivityDetailsPage({ params }: ActivityDetailsPageProps) {
   const { id } = await params;
-  const [activity, schoolSettings] = await Promise.all([
+  const [activity, schoolSettings, session] = await Promise.all([
     getActivityById(id),
     getSchoolSettings(),
+    getSession(),
   ]);
 
-  if (!activity) {
+  // Activities outside the user's ownership scope look like they don't exist
+  if (!activity || !session?.user || !isActivityInScope(session.user, activity)) {
     notFound();
   }
 
   const schoolName = schoolSettings?.school_name_ar || "مدرسة عبد الله بن علي المسند الثانوية للبنين";
 
-  const session = await getSession();
   const isSuperAdmin = session?.user?.roles.includes("SUPER_ADMIN") || false;
   const canUpload = isSuperAdmin || (session?.user?.permissions.includes(PERMISSIONS.ATTACHMENT_UPLOAD) ?? false);
   const canRemove = isSuperAdmin || (session?.user?.permissions.includes(PERMISSIONS.ATTACHMENT_REMOVE) ?? false);
   const reportTemplates = getAllowedReportTemplates(session?.user?.roles ?? []);
+  const canAssignOwner = canViewAllActivities(session.user);
+  const assignableUsers = canAssignOwner
+    ? await prisma.user.findMany({
+        where: { is_active: true },
+        orderBy: { display_name: "asc" },
+        select: { id: true, display_name: true },
+      })
+    : [];
 
   return (
     <div className="space-y-8">
@@ -65,6 +77,10 @@ export default async function ActivityDetailsPage({ params }: ActivityDetailsPag
         <span>/</span>
         <span className="text-slate-800 font-bold">{activity.name}</span>
       </div>
+
+      {canAssignOwner && (
+        <ActivityOwnerSelect activityId={activity.id} ownerId={activity.created_by_id} users={assignableUsers} />
+      )}
 
       {/* Official Activity Report (Matching Word doc 100%) */}
       <OfficialActivityReport

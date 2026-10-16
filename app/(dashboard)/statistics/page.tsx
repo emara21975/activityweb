@@ -10,8 +10,11 @@ import { PrintActionBar } from "@/components/reports/PrintActionBar";
 import { OfficialPrintHeader } from "@/components/reports/OfficialPrintHeader";
 import { OfficialPrintFooter } from "@/components/reports/OfficialPrintFooter";
 import { ReportsNav } from "@/components/reports/ReportsNav";
+import { getSession } from "@/lib/auth/session";
+import { activityScopeWhere, canViewAllActivities } from "@/lib/auth/activity-scope";
 
 export default async function StatisticsPage() {
+  const session = await getSession();
   const [currentYear, schoolSettings] = await Promise.all([
     getCurrentAcademicYear(),
     getSchoolSettings(),
@@ -19,9 +22,10 @@ export default async function StatisticsPage() {
 
   const schoolName = schoolSettings?.school_name_ar || "مدرسة عبد الله بن علي المسند الثانوية للبنين";
   const academicYearName = currentYear?.name || "2026-2027";
-  const excelExportUrl = `/api/reports/export/excel${currentYear?.id ? `?yearId=${currentYear.id}` : ""}`;
+  const excelExportUrl = `/api/reports/export/excel?type=${canViewAllActivities(session?.user) ? "stat" : "act"}${currentYear?.id ? `&yearId=${currentYear.id}` : ""}`;
 
-  const metrics = await getDashboardMetrics({ academicYearId: currentYear?.id });
+  const activityScope = session?.user ? activityScopeWhere(session.user) : { id: "__none__" };
+  const metrics = await getDashboardMetrics({ academicYearId: currentYear?.id, activityScope });
 
   // Fetch breakdown per activity category
   const categories = await prisma.activityCategory.findMany({
@@ -31,6 +35,7 @@ export default async function StatisticsPage() {
         where: {
           archived_at: null,
           ...(currentYear?.id ? { academic_year_id: currentYear.id } : {}),
+          AND: [activityScope],
         },
         include: {
           participations: {
@@ -83,7 +88,7 @@ export default async function StatisticsPage() {
 
   return (
     <div className="space-y-6">
-      <ReportsNav />
+      <ReportsNav canViewAll={canViewAllActivities(session?.user)} />
 
       {/* Top Action Bar (Print HTML / PDF + Excel export + Back) */}
       <PrintActionBar

@@ -2,6 +2,8 @@ import React from "react";
 import { getCurrentAcademicYear } from "@/lib/services/academic-year-service";
 import { getActivities } from "@/lib/services/activity-service";
 import { prisma } from "@/lib/db/prisma";
+import { getSession } from "@/lib/auth/session";
+import { activityScopeWhere } from "@/lib/auth/activity-scope";
 import { ParticipationRegisterForm } from "@/components/participations/ParticipationRegisterForm";
 
 interface ParticipationsPageProps {
@@ -12,10 +14,13 @@ interface ParticipationsPageProps {
 
 export default async function ParticipationsPage({ searchParams }: ParticipationsPageProps) {
   const params = await searchParams;
-  const currentYear = await getCurrentAcademicYear();
+  const [currentYear, session] = await Promise.all([getCurrentAcademicYear(), getSession()]);
 
   const [activities, enrollments, gradeLevels, sections] = await Promise.all([
-    getActivities({ academicYearId: currentYear?.id }),
+    getActivities({
+      academicYearId: currentYear?.id,
+      scope: session?.user ? activityScopeWhere(session.user) : { id: "__none__" },
+    }),
     prisma.studentEnrollment.findMany({
       where: {
         status: "ACTIVE",

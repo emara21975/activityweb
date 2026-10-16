@@ -94,6 +94,8 @@ export interface ActivitiesRegistryViewProps {
   schoolName: string;
   academicYearName: string;
   canManageCategories?: boolean;
+  /** Show the link to the activity assignment screen (activity.view_all) */
+  canAssign?: boolean;
   initialFilters: {
     yearId?: string;
     categoryId?: string;
@@ -220,6 +222,7 @@ export function ActivitiesRegistryView({
   schoolName,
   academicYearName,
   canManageCategories = true,
+  canAssign = false,
   initialFilters,
 }: ActivitiesRegistryViewProps) {
   const router = useRouter();
@@ -546,6 +549,19 @@ export function ActivitiesRegistryView({
                 {categories.length}
               </span>
             </Button>
+
+            {canAssign && (
+              <Link href="/activities/assign">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 font-bold border-slate-200 text-slate-700 hover:bg-slate-50 shadow-2xs"
+                >
+                  <UserCheck className="w-4 h-4 text-[#8A1538]" />
+                  <span>توزيع الأنشطة على المستخدمين</span>
+                </Button>
+              </Link>
+            )}
 
             <Link href="/participations">
               <Button

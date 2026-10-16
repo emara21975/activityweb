@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { getAttachmentForDownload } from "@/lib/storage/attachment-service";
+import { isActivityInScope } from "@/lib/auth/activity-scope";
+import { prisma } from "@/lib/db/prisma";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -23,6 +25,14 @@ export async function GET(request: Request, { params }: RouteParams) {
 
   const { id } = await params;
 
+  const attachment = await prisma.activityAttachment.findUnique({
+    where: { id },
+    select: { activity: { select: { created_by_id: true } } },
+  });
+  if (!attachment || !isActivityInScope(session.user, attachment.activity)) {
+    return new NextResponse("المرفق غير موجود.", { status: 404 });
+  }
+
   try {
     const { fileBuffer, originalName, mimeType } = await getAttachmentForDownload(id);
 
@@ -37,7 +47,8 @@ export async function GET(request: Request, { params }: RouteParams) {
       headers: {
         "Content-Type": mimeType,
         "Content-Disposition": disposition,
-        "Cache-Control": "public, max-age=86400, stale-while-revalidate=43200",
+        // Private: access depends on the signed-in user's activity scope
+        "Cache-Control": "private, max-age=86400",
       },
     });
   } catch (err: unknown) {

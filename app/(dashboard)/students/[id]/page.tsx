@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getStudentById } from "@/lib/services/student-service";
+import { currentActivityScope } from "@/lib/auth/activity-scope";
 import { getSchoolSettings } from "@/lib/services/school-settings-service";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +29,8 @@ interface StudentProfilePageProps {
 export default async function StudentProfilePage({ params }: StudentProfilePageProps) {
   const { id } = await params;
   const [student, schoolSettings] = await Promise.all([
-    getStudentById(id),
+    // Teachers only see the student's participations in their own activities
+    getStudentById(id, await currentActivityScope()),
     getSchoolSettings(),
   ]);
 

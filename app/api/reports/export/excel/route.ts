@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
+import { activityScopeWhere, canViewAllActivities } from "@/lib/auth/activity-scope";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { getOfficialReportData, getNonParticipantsReport } from "@/lib/services/report-service";
 import { getActivities } from "@/lib/services/activity-service";
@@ -37,6 +38,11 @@ export async function GET(request: Request) {
   const from = searchParams.get("from") || undefined;
   const to = searchParams.get("to") || undefined;
 
+  // School-wide reports (stat, non-participants) need activity.view_all
+  if (type !== "act" && !canViewAllActivities(session.user)) {
+    return new NextResponse("Forbidden: هذا التقرير متاح لمن يملك صلاحية عرض جميع الأنشطة.", { status: 403 });
+  }
+
   const [currentYear, schoolSettings] = await Promise.all([
     getCurrentAcademicYear(),
     getSchoolSettings(),
@@ -65,6 +71,7 @@ export async function GET(request: Request) {
       academicYearId: yearId,
       from,
       to,
+      scope: activityScopeWhere(session.user),
     });
     const items = acts.map((a) => ({
       activityDate: new Date(a.activity_date).toISOString().split("T")[0],

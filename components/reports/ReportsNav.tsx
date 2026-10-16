@@ -14,9 +14,11 @@ import {
 
 export interface ReportsNavProps {
   currentTab?: string;
+  /** School-wide reports (stat, non-participants) need activity.view_all */
+  canViewAll?: boolean;
 }
 
-export function ReportsNav({ currentTab }: ReportsNavProps) {
+export function ReportsNav({ currentTab, canViewAll = true }: ReportsNavProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const activeParamTab = currentTab || searchParams.get("tab") || "";
@@ -55,6 +57,8 @@ export function ReportsNav({ currentTab }: ReportsNavProps) {
       badge: "مؤشرات قياس",
     },
   ];
+
+  const visibleTabs = canViewAll ? tabs : tabs.filter((t) => t.id !== "stat" && t.id !== "non-participants");
 
   const isTabActive = (tab: typeof tabs[0]) => {
     if (tab.href === "/reports/stat") {
@@ -100,7 +104,7 @@ export function ReportsNav({ currentTab }: ReportsNavProps) {
 
         {/* Tab Navigation (Segmented Bar) */}
         <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
-          {tabs.map((tab) => {
+          {visibleTabs.map((tab) => {
             const active = isTabActive(tab);
             const Icon = tab.icon;
 

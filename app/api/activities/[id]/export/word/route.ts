@@ -2,6 +2,7 @@ import fs from "fs/promises";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
+import { isActivityInScope } from "@/lib/auth/activity-scope";
 import { resolveReportTemplate, ACTIVITY_REPORT_TEMPLATE_LABELS } from "@/lib/auth/report-template";
 import { getActivityById } from "@/lib/services/activity-service";
 import { getSchoolSettings } from "@/lib/services/school-settings-service";
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const [activity, schoolSettings] = await Promise.all([getActivityById(id), getSchoolSettings()]);
 
-    if (!activity) {
+    if (!activity || !isActivityInScope(session.user, activity)) {
       return NextResponse.json({ error: "Activity not found" }, { status: 404 });
     }
 

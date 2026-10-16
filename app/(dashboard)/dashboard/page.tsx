@@ -1,5 +1,6 @@
 import React from "react";
 import { getDetailedDashboardData } from "@/lib/services/statistics-service";
+import { currentActivityScope } from "@/lib/auth/activity-scope";
 import { getCurrentAcademicYear } from "@/lib/services/academic-year-service";
 import { DashboardView } from "@/components/dashboard/dashboard-view";
 
@@ -36,6 +37,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     to: params.to,
     date: params.date,
     month: params.month,
+    // Teachers see figures for their own activities only
+    activityScope: await currentActivityScope(),
   });
 
   return <DashboardView data={data} />;

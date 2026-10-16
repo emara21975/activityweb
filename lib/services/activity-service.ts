@@ -9,11 +9,14 @@ export interface ActivityFilterOptions {
   search?: string;
   from?: string;
   to?: string;
+  /** Ownership scope from activityScopeWhere(user) */
+  scope?: Prisma.ActivityWhereInput;
 }
 
 export async function getActivities(options: ActivityFilterOptions = {}) {
   const where: Prisma.ActivityWhereInput = {
     archived_at: null,
+    ...(options.scope ? { AND: [options.scope] } : {}),
   };
 
   if (options.academicYearId) {
@@ -254,4 +257,53 @@ export async function archiveActivity(id: string, actorUserId?: string) {
   });
 
   return updated;
+}
+
+/** Activities with their current owner, for the assignment screen. */
+export async function getActivitiesForAssignment(academicYearId?: string) {
+  return prisma.activity.findMany({
+    where: { archived_at: null, ...(academicYearId ? { academic_year_id: academicYearId } : {}) },
+    orderBy: { activity_date: "desc" },
+    select: {
+      id: true,
+      name: true,
+      activity_date: true,
+      created_by_id: true,
+      category: { select: { id: true, name_ar: true } },
+      _count: { select: { participations: true } },
+    },
+  });
+}
+
+/**
+ * Transfer ownership (created_by_id) of activities to another active user.
+ * Each change is written to the audit log with the previous and new owner.
+ */
+export async function reassignActivities(activityIds: string[], newOwnerId: string, actorUserId?: string) {
+  const owner = await prisma.user.findUnique({ where: { id: newOwnerId }, select: { id: true, is_active: true } });
+  if (!owner || !owner.is_active) throw new Error("المستخدم المحدد غير موجود أو غير نشط.");
+
+  const activities = await prisma.activity.findMany({
+    where: { id: { in: activityIds } },
+    select: { id: true, name: true, created_by_id: true },
+  });
+  const toChange = activities.filter((a) => a.created_by_id !== newOwnerId);
+
+  await prisma.activity.updateMany({
+    where: { id: { in: toChange.map((a) => a.id) } },
+    data: { created_by_id: newOwnerId, updated_by_id: actorUserId || null },
+  });
+
+  for (const a of toChange) {
+    await logAudit({
+      actorUserId,
+      action: "REASSIGN_OWNER",
+      entityType: "activity",
+      entityId: a.id,
+      beforeData: { name: a.name, created_by_id: a.created_by_id },
+      afterData: { name: a.name, created_by_id: newOwnerId },
+    });
+  }
+
+  return { changed: toChange.length };
 }

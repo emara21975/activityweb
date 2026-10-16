@@ -1,5 +1,6 @@
 import React from "react";
 import { getStudents, getStudentMetrics } from "@/lib/services/student-service";
+import { currentActivityScope } from "@/lib/auth/activity-scope";
 import { getCurrentAcademicYear } from "@/lib/services/academic-year-service";
 import { getSchoolSettings } from "@/lib/services/school-settings-service";
 import { prisma } from "@/lib/db/prisma";
@@ -30,6 +31,7 @@ export default async function StudentsPage({ searchParams }: StudentsPageProps) 
       nationalityGroup: params.nationality,
       page,
       pageSize: 20,
+      activityScope: await currentActivityScope(),
     }),
     getStudentMetrics({
       search: params.search,

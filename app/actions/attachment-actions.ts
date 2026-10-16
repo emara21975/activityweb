@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { saveActivityAttachment, archiveAttachment } from "@/lib/storage/attachment-service";
+import { assertActivityInScope } from "@/lib/auth/activity-scope";
+import { prisma } from "@/lib/db/prisma";
 
 export async function uploadAttachmentAction(
   prevState: { success?: boolean; error?: string } | null,
@@ -18,6 +20,8 @@ export async function uploadAttachmentAction(
     if (!file || file.size === 0) {
       return { error: "يرجى اختيار ملف المرفق." };
     }
+
+    await assertActivityInScope(user, activityId);
 
     const record = await saveActivityAttachment({
       activityId,
@@ -65,6 +69,14 @@ export async function archiveAttachmentAction(attachmentId: string, activityId: 
     if (!isSuperAdmin && !isSchoolAdmin && !hasPerm) {
       return { error: "ليس لديك صلاحية لحذف المرفقات." };
     }
+
+    // Scope is checked against the attachment's own activity
+    const attachment = await prisma.activityAttachment.findUnique({
+      where: { id: attachmentId },
+      select: { activity_id: true },
+    });
+    if (!attachment) return { error: "المرفق غير موجود." };
+    await assertActivityInScope(user, attachment.activity_id);
 
     await archiveAttachment(attachmentId, user.id);
     revalidatePath(`/activities/${activityId}`);

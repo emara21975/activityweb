@@ -11,6 +11,8 @@ export interface StudentFilterOptions {
   isActive?: boolean;
   page?: number;
   pageSize?: number;
+  /** Only count participations in these activities (activityScopeWhere) */
+  activityScope?: Prisma.ActivityWhereInput;
 }
 
 export async function getStudents(options: StudentFilterOptions = {}) {
@@ -84,6 +86,7 @@ export async function getStudents(options: StudentFilterOptions = {}) {
             activity: {
               archived_at: null,
               ...(options.academicYearId ? { academic_year_id: options.academicYearId } : {}),
+              ...(options.activityScope ? { AND: [options.activityScope] } : {}),
             },
           },
           orderBy: {
@@ -178,7 +181,7 @@ export async function getStudentMetrics(options: Omit<StudentFilterOptions, "pag
   };
 }
 
-export async function getStudentById(id: string) {
+export async function getStudentById(id: string, activityScope?: Prisma.ActivityWhereInput) {
   return prisma.student.findUnique({
     where: { id },
     include: {
@@ -195,6 +198,7 @@ export async function getStudentById(id: string) {
         },
       },
       participations: {
+        where: activityScope ? { activity: activityScope } : undefined,
         orderBy: { created_at: "desc" },
         include: {
           activity: {

@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { registerGroupParticipations, removeParticipation } from "@/lib/services/participation-service";
+import { assertActivityInScope } from "@/lib/auth/activity-scope";
+import { prisma } from "@/lib/db/prisma";
 import { registerParticipationsSchema } from "@/lib/validation/schemas";
 
 export async function registerParticipationsAction(
@@ -26,6 +28,8 @@ export async function registerParticipationsAction(
     if (!parsed.success) {
       return { error: parsed.error.issues[0]?.message || "بيانات غير صالحة" };
     }
+
+    await assertActivityInScope(user, parsed.data.activity_id);
 
     const result = await registerGroupParticipations({
       activityId: parsed.data.activity_id,
@@ -51,6 +55,13 @@ export async function registerParticipationsAction(
 
 export async function removeParticipationAction(participationId: string, activityId: string) {
   const user = await requirePermission(PERMISSIONS.PARTICIPATION_REMOVE);
+  // Check the participation's real activity, not the activityId passed by the client
+  const participation = await prisma.participation.findUnique({
+    where: { id: participationId },
+    select: { activity_id: true },
+  });
+  if (!participation) throw new Error("سجل المشاركة غير موجود.");
+  await assertActivityInScope(user, participation.activity_id);
   await removeParticipation(participationId, user.id);
   revalidatePath(`/activities/${activityId}`);
   revalidatePath("/dashboard");

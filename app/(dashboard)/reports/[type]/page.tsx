@@ -1,6 +1,8 @@
 import React from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { getSession } from "@/lib/auth/session";
+import { activityScopeWhere, canViewAllActivities } from "@/lib/auth/activity-scope";
 import { getCurrentAcademicYear, getAcademicYears } from "@/lib/services/academic-year-service";
 import { getOfficialReportData, getNonParticipantsReport } from "@/lib/services/report-service";
 import { getStudents } from "@/lib/services/student-service";
@@ -34,11 +36,18 @@ interface ReportPageProps {
 export default async function ReportDetailPage({ params, searchParams }: ReportPageProps) {
   const { type } = await params;
   const sParams = await searchParams;
-  const [currentYear, schoolSettings, academicYears] = await Promise.all([
+  const [currentYear, schoolSettings, academicYears, session] = await Promise.all([
     getCurrentAcademicYear(),
     getSchoolSettings(),
     getAcademicYears(),
+    getSession(),
   ]);
+
+  // School-wide reports are only for users who see every activity
+  const canViewAll = canViewAllActivities(session?.user);
+  if (!canViewAll && (type === "stat" || type === "non-participants")) {
+    redirect("/reports/act");
+  }
 
   const yearId = sParams.yearId || currentYear?.id;
   const schoolName = schoolSettings?.school_name_ar || "مدرسة عبد الله بن علي المسند الثانوية للبنين";
@@ -58,7 +67,7 @@ export default async function ReportDetailPage({ params, searchParams }: ReportP
     });
     return (
       <div className="space-y-6">
-        <ReportsNav />
+        <ReportsNav canViewAll={canViewAll} />
         <OfficialReportViewer
           data={reportData}
           academicYears={academicYears}
@@ -82,7 +91,7 @@ export default async function ReportDetailPage({ params, searchParams }: ReportP
 
     return (
       <div className="space-y-6">
-        <ReportsNav />
+        <ReportsNav canViewAll={canViewAll} />
 
         {/* Print & Action Bar */}
         <PrintActionBar
@@ -175,7 +184,10 @@ export default async function ReportDetailPage({ params, searchParams }: ReportP
   }
 
   if (type === "act") {
-    const activities = await getActivities({ academicYearId: yearId });
+    const activities = await getActivities({
+      academicYearId: yearId,
+      scope: session?.user ? activityScopeWhere(session.user) : { id: "__none__" },
+    });
     const totalParticipants = activities.reduce((acc, a) => acc + a.totalParticipants, 0);
     const totalQatari = activities.reduce((acc, a) => acc + a.qatariCount, 0);
     const totalNonQatari = activities.reduce((acc, a) => acc + a.nonQatariCount, 0);
@@ -184,7 +196,7 @@ export default async function ReportDetailPage({ params, searchParams }: ReportP
 
     return (
       <div className="space-y-6">
-        <ReportsNav />
+        <ReportsNav canViewAll={canViewAll} />
 
         {/* Print & Action Bar */}
         <PrintActionBar

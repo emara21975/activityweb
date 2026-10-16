@@ -2,21 +2,17 @@
 
 import { prisma } from "@/lib/db/prisma";
 import { revalidatePath } from "next/cache";
-import { getSession } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { assertActivityInScope } from "@/lib/auth/activity-scope";
 
 export async function updateActivityReportAction(activityId: string, formData: FormData) {
-  const session = await getSession();
-  if (!session?.user) {
-    throw new Error("Unauthorized");
-  }
+  const user = await requirePermission(PERMISSIONS.ACTIVITY_UPDATE);
+  await assertActivityInScope(user, activityId);
 
-  const activity = await prisma.activity.findUnique({
+  const activity = await prisma.activity.findUniqueOrThrow({
     where: { id: activityId },
   });
-
-  if (!activity) {
-    throw new Error("Activity not found");
-  }
 
   // Parse existing notes or empty object
   let existingData: Record<string, any> = {};
@@ -55,7 +51,7 @@ export async function updateActivityReportAction(activityId: string, formData: F
     where: { id: activityId },
     data: {
       notes: JSON.stringify(updatedReport),
-      updated_by_id: session.user.id,
+      updated_by_id: user.id,
     },
   });
 

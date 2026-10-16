@@ -5,6 +5,7 @@ import { getCategories } from "@/lib/services/category-service";
 import { getSchoolSettings } from "@/lib/services/school-settings-service";
 import { getSession } from "@/lib/auth/session";
 import { PERMISSIONS } from "@/lib/auth/permissions";
+import { activityScopeWhere, canViewAllActivities } from "@/lib/auth/activity-scope";
 import { ActivitiesRegistryView } from "@/components/activities/ActivitiesRegistryView";
 
 interface ActivitiesPageProps {
@@ -39,6 +40,7 @@ export default async function ActivitiesPage({ searchParams }: ActivitiesPagePro
     categoryId: params.categoryId,
     status: params.status,
     search: params.search,
+    scope: session?.user ? activityScopeWhere(session.user) : { id: "__none__" },
   });
 
   const schoolName = schoolSettings?.school_name_ar || "مدرسة عبد الله بن علي المسند الثانوية للبنين";
@@ -53,6 +55,7 @@ export default async function ActivitiesPage({ searchParams }: ActivitiesPagePro
       schoolName={schoolName}
       academicYearName={academicYearName}
       canManageCategories={canManageCategories}
+      canAssign={canViewAllActivities(session?.user)}
       initialFilters={{
         yearId: params.yearId,
         categoryId: params.categoryId,

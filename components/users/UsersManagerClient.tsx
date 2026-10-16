@@ -256,7 +256,8 @@ export function UsersManagerClient({
                 <h3 className="font-black text-slate-800">حذف المستخدم نهائياً</h3>
                 <p className="text-xs text-slate-600 leading-relaxed">
                   سيتم حذف حساب <strong>{deleting.display_name}</strong> ({deleting.username}) ولن يتمكن من الدخول
-                  مرة أخرى. الأنشطة والمشاركات التي سجّلها ستبقى محفوظة. لا يمكن التراجع عن هذا الإجراء.
+                  مرة أخرى. الأنشطة والمشاركات التي سجّلها ستبقى محفوظة، وتظهر أنشطته «بدون مسؤول» في شاشة توزيع
+                  الأنشطة. لا يمكن التراجع عن هذا الإجراء.
                 </p>
                 <p className="text-[11px] text-slate-500">إذا أردت إيقافه مؤقتاً، استخدم «تعطيل الحساب» بدلاً من الحذف.</p>
               </div>
