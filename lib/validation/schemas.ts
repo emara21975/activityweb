@@ -16,6 +16,7 @@ export const createUserSchema = z.object({
 
 export const updateUserSchema = z.object({
   id: z.string().uuid(),
+  username: z.string().min(3, "اسم المستخدم يجب أن يكون 3 أحرف على الأقل").regex(/^[a-zA-Z0-9_.-]+$/, "اسم المستخدم يحتوي أحرف غير مسموحة"),
   display_name: z.string().min(2, "الاسم الظاهر مطلوب"),
   email: z.string().email("بريد إلكتروني غير صالح").optional().or(z.literal("")),
   password: z.string().min(6, "كلمة المرور يجب أن تكون 6 أحرف على الأقل").optional().or(z.literal("")),

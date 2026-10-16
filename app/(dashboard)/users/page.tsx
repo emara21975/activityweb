@@ -1,13 +1,15 @@
 import React from "react";
 import { getUsers, getRoles } from "@/lib/services/user-service";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { createUserAction } from "@/app/actions/user-actions";
-import { ShieldCheck, UserPlus, User, Lock, Mail } from "lucide-react";
+import { UserPlus, User, Lock, Mail } from "lucide-react";
 
 import { SettingsNav } from "@/components/settings/SettingsNav";
 import { getSession } from "@/lib/auth/session";
+import { hasPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS, type PermissionCode } from "@/lib/auth/permissions";
+import { UsersManagerClient } from "@/components/users/UsersManagerClient";
 
 export default async function UsersPage() {
   const [session, users, roles] = await Promise.all([
@@ -15,6 +17,19 @@ export default async function UsersPage() {
     getUsers(),
     getRoles(),
   ]);
+
+  const can = (code: PermissionCode) =>
+    hasPermission(session?.user?.permissions ?? [], code, session?.user?.roles ?? []);
+
+  const managedUsers = users.map((u) => ({
+    id: u.id,
+    username: u.username,
+    display_name: u.display_name,
+    email: u.email,
+    is_active: u.is_active,
+    last_login_at: u.last_login_at ? u.last_login_at.toISOString() : null,
+    roles: u.user_roles.map((ur) => ({ id: ur.role.id, code: ur.role.code, name_ar: ur.role.name_ar })),
+  }));
 
   return (
     <div className="space-y-6">
@@ -26,63 +41,14 @@ export default async function UsersPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Users List */}
         <div className="lg:col-span-2 space-y-4">
-          <Card className="p-0 overflow-hidden">
-            <CardHeader className="p-4 border-b border-slate-100 flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>قائمة المستخدمين</CardTitle>
-                <CardDescription>الحسابات المسجلة وحالة النشاط والأدوار</CardDescription>
-              </div>
-              <Badge variant="neutral">{users.length} مستخدم</Badge>
-            </CardHeader>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-right text-xs">
-                <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
-                  <tr>
-                    <th className="py-3 px-4">الاسم الظاهر</th>
-                    <th className="py-3 px-4">اسم المستخدم</th>
-                    <th className="py-3 px-4">الأدوار الممنوحة</th>
-                    <th className="py-3 px-4">الحالة</th>
-                    <th className="py-3 px-4">آخر دخول</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
-                  {users.map((u) => (
-                    <tr key={u.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3.5 px-4 font-bold text-slate-900">
-                        {u.display_name}
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-slate-600">
-                        {u.username}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <div className="flex flex-wrap gap-1">
-                          {u.user_roles.map((ur) => (
-                            <Badge
-                              key={ur.role.id}
-                              variant={ur.role.code === "SUPER_ADMIN" ? "maroon" : "gold"}
-                            >
-                              {ur.role.name_ar}
-                            </Badge>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <Badge variant={u.is_active ? "success" : "neutral"}>
-                          {u.is_active ? "نشط" : "معطل"}
-                        </Badge>
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-400 font-mono text-[11px]">
-                        {u.last_login_at
-                          ? new Date(u.last_login_at).toLocaleString("ar-QA")
-                          : "لم يسجل دخول"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+          <UsersManagerClient
+            users={managedUsers}
+            roles={roles.map((r) => ({ id: r.id, code: r.code, name_ar: r.name_ar }))}
+            currentUserId={session?.user?.id ?? ""}
+            canUpdate={can(PERMISSIONS.USER_UPDATE)}
+            canToggle={can(PERMISSIONS.USER_DEACTIVATE)}
+            canDelete={can(PERMISSIONS.USER_DELETE)}
+          />
         </div>
 
         {/* Create User Form */}

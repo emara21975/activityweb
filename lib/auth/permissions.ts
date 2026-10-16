@@ -53,6 +53,7 @@ export const PERMISSIONS = {
   USER_CREATE: "user.create",
   USER_UPDATE: "user.update",
   USER_DEACTIVATE: "user.deactivate",
+  USER_DELETE: "user.delete",
 
   // Roles
   ROLE_VIEW: "role.view",
@@ -118,6 +119,7 @@ export const ALL_PERMISSIONS: PermissionDefinition[] = [
   { code: PERMISSIONS.USER_CREATE, module: "user", description: "إنشاء حساب مستخدم جديد" },
   { code: PERMISSIONS.USER_UPDATE, module: "user", description: "تعديل بيانات وأدوار وكلمات مرور المستخدمين" },
   { code: PERMISSIONS.USER_DEACTIVATE, module: "user", description: "تعطيل أو تنشيط حسابات المستخدمين" },
+  { code: PERMISSIONS.USER_DELETE, module: "user", description: "حذف حسابات المستخدمين نهائياً" },
 
   { code: PERMISSIONS.ROLE_VIEW, module: "role", description: "عرض الأدوار ومصفوفة الصلاحيات" },
   { code: PERMISSIONS.ROLE_MANAGE, module: "role", description: "تعديل أذونات الأدوار" },

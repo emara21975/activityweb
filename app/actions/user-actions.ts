@@ -3,8 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { createUser, updateUser } from "@/lib/services/user-service";
+import { createUser, updateUser, setUserActive, deleteUser } from "@/lib/services/user-service";
 import { createUserSchema, updateUserSchema } from "@/lib/validation/schemas";
+
+type ActionResult = { success: true } | { error: string };
+
+function toError(err: unknown, fallback: string): ActionResult {
+  return { error: err instanceof Error ? err.message.replace(/^(FORBIDDEN|UNAUTHORIZED): /, "") : fallback };
+}
 
 export async function createUserAction(formData: FormData) {
   const user = await requirePermission(PERMISSIONS.USER_CREATE);
@@ -26,17 +32,54 @@ export async function createUserAction(formData: FormData) {
   revalidatePath("/users");
 }
 
-export async function toggleUserStatusAction(userId: string, currentStatus: boolean, roleIds: string[]) {
-  const user = await requirePermission(PERMISSIONS.USER_DEACTIVATE);
-  const targetUser = await updateUser(
-    userId,
-    {
-      display_name: "", // Will be preserved by existing or we can update directly
-      is_active: !currentStatus,
-      role_ids: roleIds,
-    },
-    user.id
-  );
+export async function updateUserAction(input: {
+  id: string;
+  username: string;
+  display_name: string;
+  email: string;
+  password: string;
+  is_active: boolean;
+  role_ids: string[];
+}): Promise<ActionResult> {
+  try {
+    const actor = await requirePermission(PERMISSIONS.USER_UPDATE);
+    const parsed = updateUserSchema.safeParse(input);
+    if (!parsed.success) return { error: parsed.error.issues[0]?.message || "بيانات غير صالحة" };
 
-  revalidatePath("/users");
+    if (parsed.data.id === actor.id && !parsed.data.is_active) {
+      return { error: "لا يمكنك تعطيل حسابك الحالي." };
+    }
+
+    await updateUser(parsed.data.id, parsed.data, actor.id);
+    revalidatePath("/users");
+    return { success: true };
+  } catch (err) {
+    return toError(err, "فشل تحديث بيانات المستخدم");
+  }
+}
+
+export async function toggleUserStatusAction(userId: string, isActive: boolean): Promise<ActionResult> {
+  try {
+    const actor = await requirePermission(PERMISSIONS.USER_DEACTIVATE);
+    if (userId === actor.id && !isActive) return { error: "لا يمكنك تعطيل حسابك الحالي." };
+
+    await setUserActive(userId, isActive, actor.id);
+    revalidatePath("/users");
+    return { success: true };
+  } catch (err) {
+    return toError(err, "فشل تغيير حالة المستخدم");
+  }
+}
+
+export async function deleteUserAction(userId: string): Promise<ActionResult> {
+  try {
+    const actor = await requirePermission(PERMISSIONS.USER_DELETE);
+    if (userId === actor.id) return { error: "لا يمكنك حذف حسابك الحالي." };
+
+    await deleteUser(userId, actor.id);
+    revalidatePath("/users");
+    return { success: true };
+  } catch (err) {
+    return toError(err, "فشل حذف المستخدم");
+  }
 }
