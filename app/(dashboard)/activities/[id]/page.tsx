@@ -12,6 +12,7 @@ import { OfficialPrintFooter } from "@/components/reports/OfficialPrintFooter";
 import { removeParticipationAction } from "@/app/actions/participation-actions";
 import { getSession } from "@/lib/auth/session";
 import { PERMISSIONS } from "@/lib/auth/permissions";
+import { getAllowedReportTemplates } from "@/lib/auth/report-template";
 import { ActivityAttachments } from "@/components/activities/activity-attachments";
 import { OfficialActivityReport } from "@/components/activities/OfficialActivityReport";
 import { ActivityVideoDocumentation } from "@/components/activities/ActivityVideoDocumentation";
@@ -51,6 +52,7 @@ export default async function ActivityDetailsPage({ params }: ActivityDetailsPag
   const isSuperAdmin = session?.user?.roles.includes("SUPER_ADMIN") || false;
   const canUpload = isSuperAdmin || (session?.user?.permissions.includes(PERMISSIONS.ATTACHMENT_UPLOAD) ?? false);
   const canRemove = isSuperAdmin || (session?.user?.permissions.includes(PERMISSIONS.ATTACHMENT_REMOVE) ?? false);
+  const reportTemplates = getAllowedReportTemplates(session?.user?.roles ?? []);
 
   return (
     <div className="space-y-8">
@@ -69,6 +71,7 @@ export default async function ActivityDetailsPage({ params }: ActivityDetailsPag
         activity={activity}
         schoolName={schoolName}
         canEdit={isSuperAdmin || canUpload || canRemove}
+        reportTemplates={reportTemplates}
       />
 
       {/* Participants & Management (Hidden during Print of the Official Report) */}

@@ -32,6 +32,7 @@ export async function updateActivityReportAction(activityId: string, formData: F
     ...existingData,
     activity_type: formData.get("activity_type")?.toString() || "خطة معتمدة",
     activity_type_other: formData.get("activity_type_other")?.toString() || "",
+    time_period: formData.get("time_period")?.toString() || "",
     target_group: formData.get("target_group")?.toString() || "جميع طلاب المدرسة",
     responsible_department: formData.get("responsible_department")?.toString() || "قسم الأنشطة المدرسية",
     external_entity: formData.get("external_entity")?.toString() || "",

@@ -23,18 +23,26 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { updateActivityReportAction } from "@/app/actions/activity-report-actions";
 import { uploadAttachmentAction, archiveAttachmentAction } from "@/app/actions/attachment-actions";
+import { ACTIVITY_REPORT_TEMPLATE_LABELS, type ActivityReportTemplate } from "@/lib/auth/report-template";
 
 interface OfficialActivityReportProps {
   activity: any;
   schoolName: string;
   canEdit?: boolean;
+  /** Word forms this user may export; the first one is their own report */
+  reportTemplates?: ActivityReportTemplate[];
 }
 
 export function OfficialActivityReport({
   activity,
   schoolName,
   canEdit = true,
+  reportTemplates = ["SPECIALIST"],
 }: OfficialActivityReportProps) {
+  // Maroon school form (teacher) vs petrol form (specialist) have slightly different fields
+  const hasSchoolForm = reportTemplates.includes("ANNUAL");
+  const hasSpecialistForm = reportTemplates.includes("SPECIALIST");
+  const academicYear = activity.academic_year?.name || "2026-2027";
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -95,6 +103,7 @@ export function OfficialActivityReport({
   const studentSatisfaction = reportData.student_satisfaction ?? 5;
   const activityQuality = reportData.activity_quality ?? 5;
   const recommendations = reportData.recommendations || "مواصلة تنظيم مثل هذه البرامج الهادفة وتطوير آليات التقييم والتكريم.";
+  const timePeriod = reportData.time_period || "";
   const supervisorName = reportData.supervisor_name || "";
   const principalName = reportData.principal_name || "";
 
@@ -182,7 +191,8 @@ export function OfficialActivityReport({
     }
   };
 
-  const wordExportUrl = `/api/activities/${activity.id}/export/word`;
+  const wordExportUrl = (template: ActivityReportTemplate) =>
+    `/api/activities/${activity.id}/export/word?template=${template.toLowerCase()}`;
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -222,16 +232,22 @@ export function OfficialActivityReport({
               </Button>
             )}
 
-            <a href={wordExportUrl} download>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 font-bold text-slate-700 hover:bg-slate-50 border-slate-200 shadow-xs"
-              >
-                <FileText className="w-4 h-4 text-blue-600" />
-                <span>تصدير وورد (تحميل Word .docx)</span>
-              </Button>
-            </a>
+            {reportTemplates.map((template) => (
+              <a key={template} href={wordExportUrl(template)} download>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 font-bold text-slate-700 hover:bg-slate-50 border-slate-200 shadow-xs"
+                >
+                  <FileText className="w-4 h-4 text-blue-600" />
+                  <span>
+                    {reportTemplates.length > 1
+                      ? `وورد: ${ACTIVITY_REPORT_TEMPLATE_LABELS[template]}`
+                      : "تصدير وورد (تحميل Word .docx)"}
+                  </span>
+                </Button>
+              </a>
+            ))}
 
             <Button
               onClick={handlePrint}
@@ -275,7 +291,9 @@ export function OfficialActivityReport({
             {/* Center: Official Title */}
             <div className="text-center space-y-1">
               <h2 className="text-lg md:text-xl font-black text-[#8A1538] tracking-tight">
-                تقرير البرامج والأنشطة اللامنهجية 2026-2027
+                {reportTemplates[0] === "ANNUAL"
+                  ? `تقرير الأنشطة اللاصفية للعام الأكاديمي ${academicYear}`
+                  : `تقرير البرامج والأنشطة اللامنهجية ${academicYear}`}
               </h2>
               <p className="text-xs text-slate-500 font-bold">
                 {schoolName}
@@ -784,6 +802,13 @@ export function OfficialActivityReport({
                     <option value="هوية وطنية">هوية وطنية</option>
                     <option value="قيم تربوية">قيم تربوية</option>
                     <option value="تعميم">تعميم</option>
+                    {hasSchoolForm && (
+                      <>
+                        <option value="طلب إدراج">طلب إدراج</option>
+                        <option value="خطط أقسام">خطط أقسام</option>
+                        <option value="بحث علمي">بحث علمي</option>
+                      </>
+                    )}
                     <option value="أخرى">أخرى</option>
                   </select>
                 </div>
@@ -816,6 +841,21 @@ export function OfficialActivityReport({
                   </select>
                 </div>
 
+                {hasSchoolForm ? (
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">الفترة الزمنية</label>
+                    <input
+                      type="text"
+                      name="time_period"
+                      defaultValue={timePeriod}
+                      placeholder="مثال: الحصة الأولى - الثالثة"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                    />
+                  </div>
+                ) : (
+                  <input type="hidden" name="time_period" value={timePeriod} />
+                )}
+
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">الفئة المستهدفة / المرحلة</label>
                   <input
@@ -847,29 +887,39 @@ export function OfficialActivityReport({
                   />
                 </div>
 
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">تكريم الجهة الخارجية</label>
-                  <select
-                    name="external_honored"
-                    defaultValue={externalHonored ? "true" : "false"}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
-                  >
-                    <option value="false">لا</option>
-                    <option value="true">نعم</option>
-                  </select>
-                </div>
+                {/* Only the specialist (petrol) form has these two fields */}
+                {hasSpecialistForm ? (
+                  <>
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">تكريم الجهة الخارجية</label>
+                      <select
+                        name="external_honored"
+                        defaultValue={externalHonored ? "true" : "false"}
+                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                      >
+                        <option value="false">لا</option>
+                        <option value="true">نعم</option>
+                      </select>
+                    </div>
 
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">مشاركة أولياء الأمور</label>
-                  <select
-                    name="parent_participation"
-                    defaultValue={parentParticipation ? "true" : "false"}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
-                  >
-                    <option value="false">لا</option>
-                    <option value="true">نعم</option>
-                  </select>
-                </div>
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">مشاركة أولياء الأمور</label>
+                      <select
+                        name="parent_participation"
+                        defaultValue={parentParticipation ? "true" : "false"}
+                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                      >
+                        <option value="false">لا</option>
+                        <option value="true">نعم</option>
+                      </select>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <input type="hidden" name="external_honored" value={externalHonored ? "true" : "false"} />
+                    <input type="hidden" name="parent_participation" value={parentParticipation ? "true" : "false"} />
+                  </>
+                )}
 
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">مدى رضا الطلبة (1 إلى 5)</label>
